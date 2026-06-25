@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AIoTFixer 設備借還管理系統</title>
+    <meta name="description" content="北科智慧家電維修社專用設備借還管理系統">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
@@ -12,7 +13,7 @@
     <div class="max-w-7xl mx-auto space-y-4 md:space-y-6 w-full mb-8">
         <div class="text-center pt-2 space-y-1">
             <p class="text-xs md:text-sm font-bold tracking-widest text-indigo-500 uppercase">AIoTFixer</p>
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-800">🛠️AIoTFixer 設備借還管理系統</h1>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800">🛠️ 設備借還管理系統</h1>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
@@ -330,10 +331,39 @@
                 if (item.狀態 === "維修中" || item.狀態 === "損壞") statusClass = "bg-orange-50 text-orange-700 border border-orange-200 font-semibold";
                 if (item.狀態 === "報廢") statusClass = "bg-gray-200 text-gray-600 border border-gray-300 line-through";
 
-                let cateClass = "bg-gray-100 text-gray-600";
-                if (item.分類 === "工具") cateClass = "bg-blue-50 text-blue-700 border border-blue-200 font-medium";
-                if (item.分類 === "器材") cateClass = "bg-purple-50 text-purple-700 border border-purple-200 font-medium";
-                if (item.分類 === "耗材") cateClass = "bg-amber-100 text-amber-800 font-bold";
+                // 💡 通用性升級：雜湊演算法（根據分類文字，自動生成固定且漂亮的 Tailwind 膠囊顏色）
+                function getCategoryStyle(categoryName) {
+                    if (!categoryName) return "bg-gray-50 text-gray-600 border border-gray-200";
+                    
+                    // 計算分類文字的 Hash 值
+                    let hash = 0;
+                    for (let i = 0; i < categoryName.length; i++) {
+                        hash = categoryName.charCodeAt(i) + ((hash << 5) - hash);
+                    }
+                    
+                    // 精選 6 組適合 RWD 看板的高質感粉色系與文字對照表
+                    const tailwindPalettes = [
+                        { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },       // 藍
+                        { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" }, // 紫
+                        { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" }, // 綠
+                        { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" },       // 紅
+                        { bg: "bg-teal-50", text: "text-teal-700", border: "border-teal-200" },       // 青
+                        { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200" }  // 靛
+                    ];
+                    
+                    // 如果名字包含「耗材」，固定鎖定為溫暖的琥珀橘色（方便視覺管理）
+                    if (categoryName.includes("耗材")) {
+                        return "bg-amber-50 text-amber-800 border border-amber-200 font-bold";
+                    }
+                    
+                    // 其他分類依 Hash 值自動隨機分配，但同一分類永遠固定同一種顏色
+                    const index = Math.abs(hash) % tailwindPalettes.length;
+                    const p = tailwindPalettes[index];
+                    return `${p.bg} ${p.text} ${p.border} font-medium`;
+                }
+                
+                // 在 renderTable() 遍歷時，直接調用這個通用函式：
+                let cateClass = getCategoryStyle(item.分類);
                 
                 let dateStr = "-";
                 if (item.異動時間) {
@@ -346,10 +376,10 @@
 
                 return `
                     <tr class="hover:bg-gray-50 border-b border-gray-100 transition-colors">
-                        <td class="p-3 md:p-4"><span class="px-2 py-0.5 rounded text-xs ${cateClass}">${item.分類}</span></td>
+                        <td class="p-3 md:p-4"><span class="px-2 py-0.5 rounded text-xs whitespace-nowrap ${cateClass}">${item.分類}</span></td>
                         <td class="p-3 md:p-4 font-mono font-bold text-gray-800">${item.設備編號}</td>
                         <td class="p-3 md:p-4 text-gray-700 font-medium">${item.設備名稱}</td>
-                        <td class="p-3 md:p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${statusClass}">${item.狀態 || '-'}</span></td>
+                        <td class="p-3 md:p-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${statusClass}">${item.狀態 || '-'}</span></td>
                         <td class="p-3 md:p-4 text-gray-400 font-mono text-xs whitespace-nowrap">${dateStr}</td>
                     </tr>
                 `;
