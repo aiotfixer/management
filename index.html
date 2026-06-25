@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>設備借還管理系統</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        <h1 class="text-3xl font-bold text-center text-gray-800">🛠️ 設備借還管理系統</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-bold mb-4 text-indigo-600">Step 1：掃描或輸入設備</h2>
+                
+                <div id="reader" class="w-full bg-black rounded mb-4 overflow-hidden" style="min-height: 250px;"></div>
+                
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="manualInput" placeholder="或手動輸入設備編號" class="flex-1 border p-2 rounded">
+                    <button onclick="addDeviceFromInput()" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600">加入</button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xl font-bold mb-4 text-indigo-600">Step 2：確認待處理清單</h2>
+                    
+                    <div class="mb-4">
+                        <label class="block font-medium mb-1">人員姓名：</label>
+                        <input type="text" id="userName" placeholder="請輸入借還人姓名" class="w-full border p-2 rounded">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block font-medium mb-1">本次動作：</label>
+                        <select id="actionType" class="w-full border p-2 rounded">
+                            <option value="借出中">辦理借用 (狀態轉為借出中)</option>
+                            <option value="可借用">辦理歸還 (狀態轉為可借用)</option>
+                        </select>
+                    </div>
+
+                    <h3 class="font-bold text-gray-700 mb-2">已選取設備：</h3>
+                    <ul id="cartList" class="divide-y divide-gray-200 border rounded max-h-40 overflow-y-auto p-2 bg-gray-50 text-sm">
+                        <li class="text-gray-500 py-1 text-center">尚未掃描任何設備</li>
+                    </ul>
+                </div>
+
+                <button onclick="submitBatch()" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold mt-4 hover:bg-green-700">
+                    確認送出 (批次處理)
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">📊 設備即時狀態看板</h2>
+                <button onclick="fetchDashboard()" class="bg-gray-200 hover:bg-gray-300 px-4 py-1.5 rounded text-sm font-medium">🔄 重新整理</button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 border-b">
+                            <th class="p-3">設備編號</th>
+                            <th class="p-3">設備名稱</th>
+                            <th class="p-3">目前狀態</th>
+                            <th class="p-3">異動時間</th>
+                            <th class="p-3">使用人員</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dashboardBody" class="divide-y divide-gray-100 text-sm">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwklW3tEbodtReTzsS4zxfgi8x7kBiDCK0cGlKaBxzUpYsG_veyqRw03Iemc4mxGDfXNg/exec"; 
+        
+        let selectedDevices = [];
+
+        // 初始化 QR Code 掃描器
+        function onScanSuccess(decodedText, decodedResult) {
+            // 掃描成功後，防抖/避免重複加入
+            if (!selectedDevices.includes(decodedText)) {
+                selectedDevices.push(decodedText);
+                updateCartUI();
+                // 播放簡短提示音或震動（選擇性）
+                if (navigator.vibrate) navigator.vibrate(100);
+            }
+        }
+
+        const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+        html5QrcodeScanner.render(onScanSuccess);
+
+        // 手動輸入加入清單
+        function addDeviceFromInput() {
+            const input = document.getElementById("manualInput");
+            const value = input.value.trim();
+            if (value && !selectedDevices.includes(value)) {
+                selectedDevices.push(value);
+                updateCartUI();
+                input.value = "";
+            }
+        }
+
+        // 移除暫存清單中的設備
+        function removeFormCart(index) {
+            selectedDevices.splice(index, 1);
+            updateCartUI();
+        }
+
+        // 更新暫存清單 UI
+        function updateCartUI() {
+            const list = document.getElementById("cartList");
+            if (selectedDevices.length === 0) {
+                list.innerHTML = `<li class="text-gray-500 py-1 text-center">尚未掃描任何設備</li>`;
+                return;
+            }
+            list.innerHTML = selectedDevices.map((id, index) => `
+                <li class="flex justify-between items-center py-1.5">
+                    <span class="font-mono font-bold">${id}</span>
+                    <button onclick="removeFormCart(${index})" class="text-red-500 hover:text-red-700 text-xs">移除</button>
+                </li>
+            `).join('');
+        }
+
+        // 批次送出至 Google Sheets
+        function submitBatch() {
+            const user = document.getElementById("userName").value.trim();
+            const type = document.getElementById("actionType").value;
+
+            if (!user) return alert("請輸入人員姓名！");
+            if (selectedDevices.length === 0) return alert("待處理清單內沒有設備，請先掃描 QR Code！");
+
+            const payload = {
+                action: "batchProcess",
+                user: user,
+                type: type,
+                items: selectedDevices
+            };
+
+            // 顯示載入狀態
+            alert("正在處理中，請稍候...");
+
+            fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === "success") {
+                    alert(res.message);
+                    selectedDevices = []; // 清空購物車
+                    updateCartUI();
+                    document.getElementById("userName").value = "";
+                    fetchDashboard(); // 重新整理即時看板
+                } else {
+                    alert("處理失敗，請重新嘗試。");
+                }
+            });
+        }
+
+        // 獲取並渲染即時狀態看板 (GET)
+        function fetchDashboard() {
+            const tbody = document.getElementById("dashboardBody");
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-400">載入中...</td></tr>`;
+
+            fetch(GAS_URL)
+            .then(res => res.json())
+            .then(data => {
+                tbody.innerHTML = data.map(item => {
+                    const statusClass = item.狀態 === "可借用" 
+                        ? "bg-green-100 text-green-800" 
+                        : "bg-red-100 text-red-800";
+                    
+                    // 格式化時間
+                    const dateStr = item.時間 ? new Date(item.時間).toLocaleString() : "-";
+
+                    return `
+                        <tr class="hover:bg-gray-50 border-b border-gray-100">
+                            <td class="p-3 font-mono font-bold text-gray-700">${item.設備編號}</td>
+                            <td class="p-3">${item.設備名稱}</td>
+                            <td class="p-3">
+                                <span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass}">
+                                    ${item.狀態}
+                                </span>
+                            </td>
+                            <td class="p-3 text-gray-500">${dateStr}</td>
+                            <td class="p-3 text-gray-600 font-medium">${item.人員 || "-"}</td>
+                        </tr>
+                    `;
+                }).join('');
+            });
+        }
+
+        // 網頁開啟時自動載入看板資料
+        window.onload = fetchDashboard;
+    </script>
+</body>
+</html>
