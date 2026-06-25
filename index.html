@@ -9,33 +9,44 @@
 </head>
 <body class="bg-gray-100 p-4 md:p-8">
 
-    <div class="max-w-6xl mx-auto space-y-6">
+    <div class="max-w-7xl mx-auto space-y-6">
         <h1 class="text-3xl font-bold text-center text-gray-800">🛠️ 設備借還管理系統</h1>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            <div class="bg-white p-6 rounded-lg shadow">
+            <div class="bg-white p-6 rounded-lg shadow border-t-4 border-indigo-500">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold text-indigo-600">Step 1：啟用並掃描設備</h2>
+                    <h2 class="text-xl font-bold text-indigo-600">啟用並掃描設備</h2>
                     <span id="cameraStatus" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-700">未授權相機</span>
                 </div>
                 
                 <div id="reader" class="w-full bg-gray-50 rounded-xl mb-4 border-2 border-dashed border-gray-200" style="min-height: 250px;"></div>
                 
                 <div class="flex gap-2">
-                    <input type="text" id="manualInput" placeholder="手動輸入設備編號" class="flex-1 border p-2 rounded">
+                    <input type="text" id="manualInput" placeholder="或手動輸入設備編號" class="flex-1 border p-2 rounded">
                     <button onclick="addDeviceFromInput()" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 active:scale-95 transition-transform font-medium">加入</button>
                 </div>
             </div>
 
-            <div class="bg-white p-6 rounded-lg shadow flex flex-col justify-between">
+            <div class="bg-white p-6 rounded-lg shadow flex flex-col justify-between border-t-4 border-green-500">
                 <div>
-                    <h2 class="text-xl font-bold mb-4 text-indigo-600">Step 2：確認與批次借還</h2>
+                    <h2 class="text-xl font-bold mb-3 text-indigo-600">人員登記與批次借還</h2>
                     
+                    <div class="bg-amber-50 border-l-4 border-amber-500 p-3 rounded text-xs text-amber-900 mb-4 shadow-xs">
+                        <p class="font-bold text-sm text-amber-800">⚠️ 借用期限須知：</p>
+                        <p class="font-medium mt-1">借用期限以 <span class="text-red-600 font-bold">5 個工作日</span> 為限。</p>
+                    </div>
+
                     <div class="mb-4 space-y-3">
-                        <div>
-                            <label class="block font-medium mb-1 text-gray-600">操作人員姓名：</label>
-                            <input type="text" id="userName" placeholder="請輸入您的姓名" class="w-full border p-2.5 rounded-lg bg-gray-50">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-medium mb-1 text-sm text-gray-600">經手人：</label>
+                                <input type="text" id="handlerName" placeholder="經手人姓名" class="w-full border p-2.5 rounded-lg bg-gray-50 text-sm">
+                            </div>
+                            <div>
+                                <label class="block font-medium mb-1 text-sm text-gray-600">使用人：</label>
+                                <input type="text" id="userName" placeholder="使用人姓名" class="w-full border p-2.5 rounded-lg bg-gray-50 text-sm">
+                            </div>
                         </div>
                         <div>
                             <label class="block font-medium mb-1 text-gray-600">本次動作：</label>
@@ -50,38 +61,51 @@
                         <h3 class="font-bold text-gray-700">待處理清單：</h3>
                         <button onclick="clearCart()" class="text-sm text-gray-500 hover:text-red-600 active:scale-95 transition-transform">全部清除</button>
                     </div>
-                    <ul id="cartList" class="divide-y divide-gray-200 border rounded-lg max-h-40 overflow-y-auto p-2 bg-gray-50 text-sm">
+                    <ul id="cartList" class="divide-y divide-gray-200 border rounded-lg max-h-32 overflow-y-auto p-2 bg-gray-50 text-sm">
                         <li class="text-gray-500 py-3 text-center">請啟用相機並掃描設備 QR Code</li>
                     </ul>
                 </div>
 
-                <button onclick="submitBatch()" id="submitBtn" class="w-full bg-green-600 text-white py-3.5 rounded-lg font-bold mt-5 hover:bg-green-700 active:scale-[0.98] transition-all text-lg shadow-sm">
+                <button onclick="submitBatch()" id="submitBtn" class="w-full bg-green-600 text-white py-3.5 rounded-lg font-bold mt-4 hover:bg-green-700 active:scale-[0.98] transition-all text-lg shadow-sm">
                     確認送出
                 </button>
             </div>
         </div>
 
         <div class="bg-white p-6 rounded-lg shadow">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                 <h2 class="text-xl font-bold text-gray-800">📊 設備即時狀態看板</h2>
-                <button onclick="fetchDashboard()" class="bg-gray-200 hover:bg-gray-300 active:scale-95 transition-transform px-4 py-1.5 rounded text-sm font-medium">🔄 重新整理</button>
+                
+                <div class="flex w-full md:w-auto gap-2 items-center">
+                    <input type="text" id="searchInput" oninput="handleSearch()" placeholder="搜尋編號、名稱、分類或狀態..." class="border p-2 rounded-lg text-sm w-full md:w-64 bg-gray-50">
+                    <button onclick="fetchDashboard()" class="bg-gray-200 hover:bg-gray-300 active:scale-95 transition-transform px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap">🔄 重新整理</button>
+                </div>
             </div>
             
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse table-auto">
                     <thead>
-                        <tr class="bg-gray-100 border-b">
+                        <tr class="bg-gray-100 border-b text-sm">
+                            <th class="p-4">分類</th>
                             <th class="p-4">設備編號</th>
                             <th class="p-4">設備名稱</th>
                             <th class="p-4">目前狀態</th>
                             <th class="p-4">異動時間</th>
-                            <th class="p-4">使用人員</th>
+                            <th class="p-4 text-red-600 font-bold">應歸還時間</th>
                         </tr>
                     </thead>
-                    <tbody id="dashboardBody" class="divide-y divide-gray-100 text-sm">
-                        <tr><td colspan="5" class="text-center p-6 text-gray-400">載入中...</td></tr>
+                    <tbody id="dashboardBody" class="divide-y divide-gray-100 text-xs md:text-sm">
+                        <tr><td colspan="6" class="text-center p-6 text-gray-400">載入中...</td></tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-100 text-sm text-gray-600">
+                <div id="pageInfo">顯示第 0 到 0 筆，共 0 筆資料</div>
+                <div class="flex gap-2">
+                    <button id="prevBtn" onclick="changePage(-1)" class="px-3 py-1.5 border rounded-md bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium">上一頁</button>
+                    <button id="nextBtn" onclick="changePage(1)" class="px-3 py-1.5 border rounded-md bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium">下一頁</button>
+                </div>
             </div>
         </div>
     </div>
@@ -94,7 +118,11 @@
         let lastScannedCode = "";
         let lastScanTime = 0;
 
-        // 相機初始化功能
+        let allDashboardData = [];   
+        let filteredDashboardData = []; 
+        let currentPage = 1;
+        const rowsPerPage = 20;       
+
         function initializeCamera() {
             document.getElementById("reader").innerHTML = ""; 
 
@@ -104,9 +132,7 @@
                     fps: 12, 
                     qrbox: { width: 250, height: 250 }, 
                     aspectRatio: 1.0,
-                    videoConstraints: {
-                        facingMode: { exact: "environment" } 
-                    }
+                    videoConstraints: { facingMode: { exact: "environment" } }
                 },
                 false
             );
@@ -118,15 +144,9 @@
             statusTag.className = "px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800";
         }
 
-        // 掃描成功回調功能
         function onScanSuccess(decodedText, decodedResult) {
             const currentTime = new Date().getTime();
-            
-            // 防重複感應機制
-            if (decodedText === lastScannedCode && (currentTime - lastScanTime) < 2000) {
-                return; 
-            }
-
+            if (decodedText === lastScannedCode && (currentTime - lastScanTime) < 2000) return; 
             lastScannedCode = decodedText;
             lastScanTime = currentTime;
 
@@ -136,7 +156,6 @@
             }
         }
 
-        // 掃描錯誤與降級處理功能
         function onScanError(errorMessage) {
             if (errorMessage.includes("OverconstrainedError") || errorMessage.includes("Constraints")) {
                 console.warn("後鏡頭不可用，降級為自動選擇。");
@@ -147,7 +166,6 @@
             }
         }
 
-        // 手動輸入加入功能
         function addDeviceFromInput() {
             const input = document.getElementById("manualInput");
             const value = input.value.trim().toUpperCase();
@@ -158,19 +176,16 @@
             }
         }
 
-        // 清單單項移除功能
         function removeFormCart(index) {
             selectedDevices.splice(index, 1);
             updateCartUI();
         }
 
-        // 清單全部清除功能
         function clearCart() {
             selectedDevices = [];
             updateCartUI();
         }
 
-        // 更新待處理清單介面功能
         function updateCartUI() {
             const list = document.getElementById("cartList");
             if (selectedDevices.length === 0) {
@@ -185,16 +200,17 @@
             `).join('');
         }
 
-        // 提交資料至雲端功能
         function submitBatch() {
+            const handler = document.getElementById("handlerName").value.trim();
             const user = document.getElementById("userName").value.trim();
             const type = document.getElementById("actionType").value;
             const btn = document.getElementById("submitBtn");
 
-            if (!user) return alert("請輸入操作人員姓名！");
+            if (!handler) return alert("請輸入經手人姓名！");
+            if (!user) return alert("請輸入使用人姓名！");
             if (selectedDevices.length === 0) return alert("暫存清單內沒有設備，請先掃描！");
 
-            if (!confirm(`確定將以下 ${selectedDevices.length} 項設備狀態更改為「${type}」？\n${selectedDevices.join(', ')}`)) {
+            if (!confirm(`確定將以下 ${selectedDevices.length} 項設備狀態更改為「${type}」？\n經手人：${handler}\n使用人：${user}`)) {
                 return;
             }
 
@@ -204,15 +220,13 @@
 
             const payload = {
                 action: "batchProcess",
+                handler: handler,
                 user: user,
                 type: type,
                 items: selectedDevices
             };
 
-            fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify(payload)
-            })
+            fetch(GAS_URL, { method: "POST", body: JSON.stringify(payload) })
             .then(res => res.json())
             .then(res => {
                 if (res.status === "success") {
@@ -226,47 +240,100 @@
             })
             .finally(() => {
                 btn.disabled = false;
-                btn.textContent = "確認送出 (處理多項設備)";
+                btn.textContent = "確認送出";
                 btn.classList.remove("opacity-50", "cursor-not-allowed");
             });
         }
 
-        // 獲取即時看板資料功能
         function fetchDashboard() {
             const tbody = document.getElementById("dashboardBody");
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center p-6 text-gray-400">載入中...</td></tr>`;
             
             fetch(GAS_URL)
             .then(res => res.json())
             .then(data => {
-                if (data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-gray-400">目前沒有設備資料。</td></tr>`;
-                    return;
-                }
-                tbody.innerHTML = data.map(item => {
-                    const statusClass = item.狀態 === "可借用" 
-                        ? "bg-green-100 text-green-800" 
-                        : "bg-red-100 text-red-800";
-                    
-                    const dateStr = item.時間 ? new Date(item.時間).toLocaleString('zh-TW', { hour12: false }) : "-";
-
-                    return `
-                        <tr class="hover:bg-gray-50 border-b border-gray-100 transition-colors">
-                            <td class="p-4 font-mono font-bold text-gray-800">${item.設備編號}</td>
-                            <td class="p-4 text-gray-700">${item.設備名稱}</td>
-                            <td class="p-4">
-                                <span class="px-3 py-1.5 rounded-full text-xs font-bold ${statusClass}">
-                                    ${item.狀態}
-                                </span>
-                            </td>
-                            <td class="p-4 text-gray-500 font-mono text-xs">${dateStr}</td>
-                            <td class="p-4 text-gray-600 font-medium">${item.人員 || "-"}</td>
-                        </tr>
-                    `;
-                }).join('');
+                allDashboardData = data;
+                handleSearch(); 
             });
         }
 
-        // 網頁初始載入設定功能
+        function handleSearch() {
+            const keyword = document.getElementById("searchInput").value.trim().toLowerCase();
+            
+            if (!keyword) {
+                filteredDashboardData = [...allDashboardData];
+            } else {
+                filteredDashboardData = allDashboardData.filter(item => {
+                    return (
+                        (item.分類 && item.分類.toLowerCase().includes(keyword)) ||
+                        (item.設備編號 && String(item.設備編號).toLowerCase().includes(keyword)) ||
+                        (item.設備名稱 && item.設備名稱.toLowerCase().includes(keyword)) ||
+                        (item.狀態 && item.狀態.toLowerCase().includes(keyword))
+                    );
+                });
+            }
+            currentPage = 1; 
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById("dashboardBody");
+            const totalItems = filteredDashboardData.length;
+            
+            if (totalItems === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center p-6 text-gray-400">找不到符合條件的設備資料。</td></tr>`;
+                document.getElementById("pageInfo").textContent = "顯示第 0 到 0 筆，共 0 筆資料";
+                document.getElementById("prevBtn").disabled = true;
+                document.getElementById("nextBtn").disabled = true;
+                return;
+            }
+
+            const totalPages = Math.ceil(totalItems / rowsPerPage);
+            if (currentPage > totalPages) currentPage = totalPages;
+            
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, totalItems);
+            
+            const pageData = filteredDashboardData.slice(startIndex, startIndex + rowsPerPage);
+
+            tbody.innerHTML = pageData.map(item => {
+                const statusClass = item.狀態 === "借出中" ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800";
+                
+                let cateClass = "bg-gray-100 text-gray-700";
+                if (item.分類 === "工具") cateClass = "bg-blue-100 text-blue-800 font-medium";
+                if (item.分類 === "器材") cateClass = "bg-purple-100 text-purple-800 font-medium";
+                if (item.分類 === "耗材") cateClass = "bg-amber-100 text-amber-800 font-medium";
+                
+                const dateStr = item.異動時間 ? new Date(item.異動時間).toLocaleString('zh-TW', { hour12: false }) : "-";
+                
+                let dueDateStr = "-";
+                if (item.應歸還時間 && item.應歸還時間 !== "-") {
+                    const dDate = new Date(item.應歸還時間);
+                    dueDateStr = `${dDate.getFullYear()}/${dDate.getMonth()+1}/${dDate.getDate()}`;
+                }
+
+                return `
+                    <tr class="hover:bg-gray-50 border-b border-gray-100 transition-colors">
+                        <td class="p-4"><span class="px-2 py-1 rounded text-xs ${cateClass}">${item.分類}</span></td>
+                        <td class="p-4 font-mono font-bold text-gray-800">${item.設備編號}</td>
+                        <td class="p-4 text-gray-700">${item.設備名稱}</td>
+                        <td class="p-4"><span class="px-3 py-1.5 rounded-full text-xs font-bold ${statusClass}">${item.狀態}</span></td>
+                        <td class="p-4 text-gray-400 font-mono text-xs">${dateStr}</td>
+                        <td class="p-4 font-mono text-xs font-semibold text-red-700">${dueDateStr}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById("pageInfo").textContent = `顯示第 ${startIndex + 1} 到 ${endIndex} 筆，共 ${totalItems} 筆資料`;
+            document.getElementById("prevBtn").disabled = (currentPage === 1);
+            document.getElementById("nextBtn").disabled = (currentPage === totalPages);
+        }
+
+        function changePage(direction) {
+            currentPage += direction;
+            renderTable();
+        }
+
         window.onload = function() {
             document.getElementById("reader").innerHTML = `
                 <div class="flex flex-col items-center justify-center h-full p-6 text-center">
