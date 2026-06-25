@@ -6,33 +6,18 @@
     <title>設備借還管理系統</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <style>
-        /* 針對掃描區域的客製化樣式 */
-        #reader__scan_region video {
-            border-radius: 12px;
-            overflow: hidden;
-            border: 2px solid #ddd;
-        }
-        #reader__dashboard_section_csr button {
-            background-color: #4f46e5; /* Indigo */
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-weight: 600;
-        }
-    </style>
 </head>
 <body class="bg-gray-100 p-4 md:p-8">
 
     <div class="max-w-6xl mx-auto space-y-6">
-        <h1 class="text-3xl font-bold text-center text-gray-800">🛠️ 設備借還管理系統</h1>
+        <h1 class="text-3xl font-bold text-center text-gray-800">設備借還管理系統</h1>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             <div class="bg-white p-6 rounded-lg shadow">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-bold text-indigo-600">Step 1：啟用並掃描設備</h2>
-                    <span id="cameraStatus" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-700">未偵測到相機</span>
+                    <span id="cameraStatus" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-700">未授權相機</span>
                 </div>
                 
                 <div id="reader" class="w-full bg-gray-50 rounded-xl mb-4 border-2 border-dashed border-gray-200" style="min-height: 250px;">
@@ -56,8 +41,8 @@
                         <div>
                             <label class="block font-medium mb-1 text-gray-600">本次動作：</label>
                             <select id="actionType" class="w-full border p-2.5 rounded-lg bg-gray-50 font-medium text-gray-800">
-                                <option value="借出中" class="text-red-700">辦理借用 (一鍵多項)</option>
-                                <option value="可借用" class="text-green-700">辦理歸還 (一鍵多項)</option>
+                                <option value="借出中" class="text-red-700">辦理借用</option>
+                                <option value="可借用" class="text-green-700">辦理歸還</option>
                             </select>
                         </div>
                     </div>
@@ -79,8 +64,8 @@
 
         <div class="bg-white p-6 rounded-lg shadow">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-gray-800">📊 設備即時狀態看板 (1秒同步)</h2>
-                <button onclick="fetchDashboard()" class="bg-gray-200 hover:bg-gray-300 px-4 py-1.5 rounded text-sm font-medium">🔄 重新整理</button>
+                <h2 class="text-xl font-bold text-gray-800">設備即時狀態看板</h2>
+                <button onclick="fetchDashboard()" class="bg-gray-200 hover:bg-gray-300 px-4 py-1.5 rounded text-sm font-medium">重新整理</button>
             </div>
             
             <div class="overflow-x-auto">
@@ -107,70 +92,75 @@
         
         let selectedDevices = [];
         let html5QrcodeScanner;
+        let lastScannedCode = "";
+        let lastScanTime = 0;
 
-        // --- 相機權限與掃描邏輯 ---
+        function triggerVibration() {
+            if ("vibrate" in navigator) {
+                navigator.vibrate(100); // 震動 100 毫秒
+            }
+        }
 
-        // 初始化掃描器並主動要求權限
+        // --- 📷 相機權限與掃描邏輯 ---
         function initializeCamera() {
+            document.getElementById("reader").innerHTML = ""; // 清空提示按鈕
+
             html5QrcodeScanner = new Html5QrcodeScanner(
                 "reader", 
                 { 
-                    fps: 10,       // 幀率
-                    qrbox: 280,     // 掃描框大小
-                    aspectRatio: 1.0 // 強制正方形相機畫面
+                    fps: 12, // 提升幀率讓感應更靈敏
+                    qrbox: { width: 250, height: 250 }, 
+                    aspectRatio: 1.0,
+                    videoConstraints: {
+                        facingMode: { exact: "environment" } 
+                    }
                 },
                 /* verbose= */ false
             );
 
-            // 啟動掃描器，html5-qrcode 會自動觸發相機權限要求
+            // 啟動渲染（此處瀏覽器會彈出相機權限視窗）
             html5QrcodeScanner.render(onScanSuccess, onScanError);
             
-            // 更新狀態顯示 (假設權限已獲得，失敗會觸發 Error)
-            document.getElementById("cameraStatus").textContent = "相機已啟用";
-            document.getElementById("cameraStatus").classList.remove("bg-gray-200", "text-gray-700");
-            document.getElementById("cameraStatus").classList.add("bg-green-100", "text-green-800");
+            // 更新 UI 狀態
+            const statusTag = document.getElementById("cameraStatus");
+            statusTag.textContent = "後鏡頭已啟用";
+            statusTag.className = "px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800";
         }
 
-        // 掃描成功回調
+        // 掃描成功處理
         function onScanSuccess(decodedText, decodedResult) {
-            // decodedText 為 QR Code 的內容 (即設備編號)
+            const currentTime = new Date().getTime();
+            
+            if (decodedText === lastScannedCode && (currentTime - lastScanTime) < 2000) {
+                return; 
+            }
+
+            lastScannedCode = decodedText;
+            lastScanTime = currentTime;
+
+            // 觸發純震動回饋
+            triggerVibration();
+
+            // 加入暫存清單
             if (!selectedDevices.includes(decodedText)) {
                 selectedDevices.push(decodedText);
                 updateCartUI();
-                // 手機震動提示 (如果支援)
-                if (navigator.vibrate) navigator.vibrate(100);
             }
         }
 
-        // 掃描失敗回調 (通常是沒掃到東西)
+        // 掃描失敗或硬體限制捕捉
         function onScanError(errorMessage) {
-            // 由於頻率很高，通常不在此彈出錯誤，只在控制台記錄
-            // 如果發生權限被拒絕，則會進入不同的邏輯
+            // 防呆降級方案：若在沒有後鏡頭的裝置（如筆電）上強制指定 environment 報錯，降級為自動選擇
+            if (errorMessage.includes("OverconstrainedError") || errorMessage.includes("Constraints")) {
+                console.warn("無法強制啟用後鏡頭，切換為自動選擇鏡頭模式。");
+                html5QrcodeScanner.clear().then(() => {
+                    html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 12, qrbox: 250 });
+                    html5QrcodeScanner.render(onScanSuccess, () => {});
+                });
+            }
         }
 
-        // 當網頁載入時，先顯示啟用按鈕，不直接要求權限以免嚇到使用者
-        window.onload = function() {
-            // 在 #reader 區域動態插入一個啟用按鈕
-            document.getElementById("reader").innerHTML = `
-                <div class="flex flex-col items-center justify-center h-full p-6 text-center">
-                    <i class="fa-solid fa-camera text-4xl text-indigo-300 mb-3"></i>
-                    <p class="text-gray-600 mb-4">系統需要存取您的相機以掃描 QR Code</p>
-                    <button onclick="initializeCamera()" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700">
-                        啟用相機並授權
-                    </button>
-                </div>
-            `;
-            // 加入 FontAwesome 圖示
-            const link = document.createElement("link");
-            link.rel = "stylesheet";
-            link.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css";
-            document.head.appendChild(link);
-
-            fetchDashboard(); // 初始化看板
-        };
-
-        // --- 借還清單 (購物車) 邏輯 ---
-
+        // --- 📋 待處理清單 UI 邏輯 ---
         function addDeviceFromInput() {
             const input = document.getElementById("manualInput");
             const value = input.value.trim().toUpperCase();
@@ -205,23 +195,21 @@
             `).join('');
         }
 
-        // --- 資料同步至 Google Sheets ---
-
+        // --- ☁️ 同步至 Google Sheets ---
         function submitBatch() {
             const user = document.getElementById("userName").value.trim();
             const type = document.getElementById("actionType").value;
             const btn = document.getElementById("submitBtn");
 
             if (!user) return alert("請輸入操作人員姓名！");
-            if (selectedDevices.length === 0) return alert("待處理清單內沒有設備，請先掃描或手動輸入！");
+            if (selectedDevices.length === 0) return alert("暫存清單內沒有設備，請先掃描！");
 
-            if (!confirm(`確定要將以下 ${selectedDevices.length} 項設備狀態更改為「${type}」嗎？\n${selectedDevices.join(', ')}`)) {
+            if (!confirm(`確定將以下 ${selectedDevices.length} 項設備狀態更改為「${type}」？\n${selectedDevices.join(', ')}`)) {
                 return;
             }
 
-            // 顯示載入狀態
             btn.disabled = true;
-            btn.textContent = "處理中 (請勿關閉)...";
+            btn.textContent = "傳送中...";
             btn.classList.add("opacity-50", "cursor-not-allowed");
 
             const payload = {
@@ -241,20 +229,19 @@
                     alert(res.message);
                     clearCart();
                     document.getElementById("userName").value = "";
-                    fetchDashboard(); // 重新整理即時看板
+                    fetchDashboard();
                 } else {
-                    alert("處理失敗：" + res.message);
+                    alert("錯誤：" + res.message);
                 }
             })
             .finally(() => {
-                // 恢復按鈕狀態
                 btn.disabled = false;
-                btn.textContent = "確認送出 (處理多項設備)";
+                btn.textContent = "確認送出";
                 btn.classList.remove("opacity-50", "cursor-not-allowed");
             });
         }
 
-        // 獲取即時狀態看板數據 (GET)
+        // 獲取即時看板資料 (GET)
         function fetchDashboard() {
             const tbody = document.getElementById("dashboardBody");
             
@@ -288,6 +275,21 @@
                 }).join('');
             });
         }
+
+        // 網頁載入初始化
+        window.onload = function() {
+            // 插入引導要求權限按鈕
+            document.getElementById("reader").innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full p-6 text-center">
+                    <svg class="w-12 h-12 text-indigo-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <p class="text-gray-600 mb-4">系統需要存取您的相機以掃描 QR Code</p>
+                    <button onclick="initializeCamera()" class="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-indigo-700 shadow-sm transition-colors">
+                        開啟後置鏡頭並授權
+                    </button>
+                </div>
+            `;
+            fetchDashboard();
+        };
     </script>
 </body>
 </html>
