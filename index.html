@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>設備借還管理系統</title>
+    <title>AIoTFixer 設備借還管理系統</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
-<body class="bg-gray-100 p-3 md:p-8 select-none">
+<body class="bg-gray-100 p-3 md:p-8 select-none flex flex-col min-h-screen justify-between">
 
-    <div class="max-w-7xl mx-auto space-y-4 md:space-y-6">
-        <h1 class="text-2xl md:text-3xl font-bold text-center text-gray-800 pt-2">🛠️ 設備借還管理系統</h1>
+    <div class="max-w-7xl mx-auto space-y-4 md:space-y-6 w-full mb-8">
+        <div class="text-center pt-2 space-y-1">
+            <p class="text-xs md:text-sm font-bold tracking-widest text-indigo-500 uppercase">AIoTFixer</p>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800">🛠️AIoTFixer 設備借還管理系統</h1>
+        </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             
@@ -24,7 +27,7 @@
                 </div>
                 
                 <div class="flex gap-2">
-                    <input type="text" id="manualInput" placeholder="或手動輸入設備編號" class="flex-1 border p-2.5 rounded-lg text-sm bg-gray-50 focus:bg-white outline-none">
+                    <input type="text" id="manualInput" placeholder="手動輸入設備編號" class="flex-1 border p-2.5 rounded-lg text-sm bg-gray-50 focus:bg-white outline-none">
                     <button onclick="addDeviceFromInput()" class="bg-indigo-500 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-600 active:scale-95 text-sm font-medium whitespace-nowrap">加入</button>
                 </div>
             </div>
@@ -48,7 +51,8 @@
                             <label class="block font-medium mb-1 text-xs md:text-sm text-gray-600">本次動作：</label>
                             <select id="actionType" class="w-full border p-2.5 rounded-lg bg-gray-50 font-medium text-sm text-gray-800 focus:bg-white outline-none">
                                 <option value="借出中" class="text-red-700 font-bold">辦理借用 / 耗材領用</option>
-                                <option value="可借用" class="text-green-700 font-bold">辦理歸還 (耗材除外)</option>
+                                <option value="可借用" class="text-green-700 font-bold">辦理歸還</option>
+                                <option value="維修中" class="text-green-700 font-bold">故障報修</option>
                             </select>
                         </div>
                     </div>
@@ -85,7 +89,7 @@
                             <th class="p-3 md:p-4">設備編號</th>
                             <th class="p-3 md:p-4">設備名稱</th>
                             <th class="p-3 md:p-4">目前狀態</th>
-                            <th class="p-3 md:p-4">最後異動時間</th>
+                            <th class="p-4">最後異動時間</th>
                         </tr>
                     </thead>
                     <tbody id="dashboardBody" class="divide-y divide-gray-100 text-xs md:text-sm">
@@ -104,6 +108,10 @@
         </div>
     </div>
 
+    <footer class="w-full text-center py-4 border-t border-gray-200 text-gray-400 text-xs tracking-wider">
+        &copy; <span id="currentYear"></span> AIoTFixer. All Rights Reserved.
+    </footer>
+
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbwklW3tEbodtReTzsS4zxfgi8x7kBiDCK0cGlKaBxzUpYsG_veyqRw03Iemc4mxGDfXNg/exec"; 
         
@@ -115,7 +123,7 @@
         let allDashboardData = [];   
         let filteredDashboardData = []; 
         let currentPage = 1;
-        const rowsPerPage = 20;       
+        const rowsPerPage = 10;       
 
         function initializeCamera() {
             document.getElementById("reader").innerHTML = ""; 
@@ -175,7 +183,7 @@
             const currentAction = document.getElementById("actionType").value;
 
             if (currentAction === "借出中" && !isConsumable && currentStatus !== "可借用" && currentStatus !== "") {
-                alert(`無法借用：設備編號 [ ${id} ] 目前狀態為「${currentStatus}」，不開放辦理借用！`);
+                alert(`❌ 無法借用：設備編號 [ ${id} ] 目前狀態為「${currentStatus}」，不開放辦理借用！`);
                 return;
             }
 
@@ -231,7 +239,7 @@
 
             let confirmMsg = `確定送出這 ${selectedDevices.length} 項項目變更嗎？\n經手人：${handler}\n使用人：${user}\n\n異動清單：\n`;
             selectedDevices.forEach(item => {
-                confirmMsg += `- ${item.id} ${item.isConsumable ? '(更新領用資訊且狀態不變)' : ''}\n`;
+                confirmMsg += `- ${item.id} ${item.isConsumable ? '(更新領用資訊)' : ''}\n`;
             });
 
             if (!confirm(confirmMsg)) return;
@@ -358,9 +366,11 @@
         }
 
         window.onload = function() {
+            document.getElementById("currentYear").textContent = new Date().getFullYear();
+
             document.getElementById("reader").innerHTML = `
                 <div class="flex flex-col items-center justify-center h-full p-6 text-center min-h-[220px]">
-                    <svg class="w-10 h-10 text-indigo-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812-1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <svg class="w-10 h-10 text-indigo-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                     <p class="text-xs text-gray-500 mb-3">系統需要存取您的相機以掃描條碼</p>
                     <button onclick="initializeCamera()" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700 active:scale-95 shadow-xs transition-all">
                         開啟相機授權
