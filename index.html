@@ -24,7 +24,7 @@
                 </div>
                 
                 <div class="flex gap-2">
-                    <input type="text" id="manualInput" placeholder="手動輸入設備編號" class="flex-1 border p-2.5 rounded-lg text-sm bg-gray-50 focus:bg-white outline-none">
+                    <input type="text" id="manualInput" placeholder="或手動輸入設備編號" class="flex-1 border p-2.5 rounded-lg text-sm bg-gray-50 focus:bg-white outline-none">
                     <button onclick="addDeviceFromInput()" class="bg-indigo-500 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-600 active:scale-95 text-sm font-medium whitespace-nowrap">加入</button>
                 </div>
             </div>
@@ -33,6 +33,11 @@
                 <div>
                     <h2 class="text-lg md:text-xl font-bold mb-3 text-indigo-600">人員登記與批次借還</h2>
                     
+                    <div class="bg-amber-50 border-l-4 border-amber-500 p-3 rounded-lg text-xs text-amber-900 mb-3 shadow-xs">
+                        <p class="font-bold text-amber-800">⚠️ 借用與領用須知：</p>
+                        <p class="font-medium mt-0.5">工具/器材變更狀態；耗材領用時將更新經手人、使用人及異動時間，但狀態文字保持不變。</p>
+                    </div>
+
                     <div class="mb-3 space-y-3">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
@@ -48,7 +53,7 @@
                             <label class="block font-medium mb-1 text-xs md:text-sm text-gray-600">本次動作：</label>
                             <select id="actionType" class="w-full border p-2.5 rounded-lg bg-gray-50 font-medium text-sm text-gray-800 focus:bg-white outline-none">
                                 <option value="借出中" class="text-red-700 font-bold">辦理借用 / 耗材領用</option>
-                                <option value="可借用" class="text-green-700 font-bold">辦理歸還</option>
+                                <option value="可借用" class="text-green-700 font-bold">辦理歸還 (耗材除外)</option>
                             </select>
                         </div>
                     </div>
@@ -115,7 +120,7 @@
         let allDashboardData = [];   
         let filteredDashboardData = []; 
         let currentPage = 1;
-        const rowsPerPage = 10;       
+        const rowsPerPage = 20;       
 
         function initializeCamera() {
             document.getElementById("reader").innerHTML = ""; 
@@ -167,31 +172,24 @@
 
         function addDeviceToCart(id) {
             const exists = selectedDevices.find(item => item.id === id);
-            if (exists) {
-                if (exists.isConsumable) {
-                    exists.count++; 
-                    updateCartUI();
-                }
+            if (exists) return; 
+
+            const matchedItem = allDashboardData.find(item => String(item.設備編號).trim() === id);
+            const isConsumable = matchedItem ? (matchedItem.分類 === "耗材") : false; 
+            const currentStatus = matchedItem ? matchedItem.狀態 : "";
+            const currentAction = document.getElementById("actionType").value;
+
+            if (currentAction === "借出中" && !isConsumable && currentStatus !== "可借用" && currentStatus !== "") {
+                alert(`無法借用：設備編號 [ ${id} ] 目前狀態為「${currentStatus}」，不開放辦理借用！`);
                 return;
             }
 
-            // 查閱看板資料，精準判定是否為耗材
-            const matchedItem = allDashboardData.find(item => String(item.設備編號).trim() === id);
-            const isConsumable = matchedItem ? (matchedItem.分類 === "耗材") : false; 
-
             selectedDevices.push({
                 id: id,
-                count: 1,
                 isConsumable: isConsumable
             });
             updateCartUI();
             if (navigator.vibrate) navigator.vibrate(50);
-        }
-
-        function stepCount(index, amount) {
-            selectedDevices[index].count += amount;
-            if (selectedDevices[index].count < 1) selectedDevices[index].count = 1;
-            updateCartUI();
         }
 
         function removeFormCart(index) {
@@ -211,14 +209,6 @@
                 return;
             }
             list.innerHTML = selectedDevices.map((item, index) => {
-                const quantityControls = item.isConsumable ? `
-                    <div class="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-lg p-1 mx-2">
-                        <button onclick="stepCount(${index}, -1)" class="w-7 h-7 bg-white rounded font-bold text-gray-600 active:bg-gray-200">-</button>
-                        <span class="w-8 text-center font-bold font-mono text-sm text-amber-900">${item.count}</span>
-                        <button onclick="stepCount(${index}, 1)" class="w-7 h-7 bg-white rounded font-bold text-gray-600 active:bg-gray-200">+</button>
-                    </div>
-                ` : `<span class="text-xs text-gray-400 px-3">固定數量(1)</span>`;
-
                 return `
                     <li class="flex justify-between items-center py-2 bg-white px-2.5 rounded-lg my-1 shadow-xs border border-gray-100">
                         <div class="flex items-center flex-1 justify-between">
@@ -226,7 +216,7 @@
                                 <span class="font-mono font-bold text-gray-800 text-sm md:text-base">${item.id}</span>
                                 ${item.isConsumable ? '<span class="text-[10px] text-amber-600 font-semibold">經查閱：耗材</span>' : ''}
                             </div>
-                            ${quantityControls}
+                            <span class="text-xs text-gray-400 px-3">${item.isConsumable ? '直接登記' : '固定數量(1)'}</span>
                         </div>
                         <button onclick="removeFormCart(${index})" class="text-red-500 text-xs font-semibold p-2 ml-1">移除</button>
                     </li>
@@ -246,7 +236,7 @@
 
             let confirmMsg = `確定送出這 ${selectedDevices.length} 項項目變更嗎？\n經手人：${handler}\n使用人：${user}\n\n異動清單：\n`;
             selectedDevices.forEach(item => {
-                confirmMsg += `- ${item.id} ${item.isConsumable ? '(耗材數量: ' + item.count + '，更新領用資訊且狀態不變)' : ''}\n`;
+                confirmMsg += `- ${item.id} ${item.isConsumable ? '(更新領用資訊且狀態不變)' : ''}\n`;
             });
 
             if (!confirm(confirmMsg)) return;
@@ -332,9 +322,11 @@
                 let statusClass = "bg-gray-100 text-gray-700";
                 if (item.狀態 === "借出中") statusClass = "bg-red-50 text-red-700 border border-red-200";
                 if (item.狀態 === "可借用") statusClass = "bg-green-50 text-green-700 border border-green-200";
-                // 耗材的狀態樣式優化呈現
                 if (item.分類 === "耗材") statusClass = "bg-amber-50 text-amber-700 border border-amber-200 font-semibold";
                 
+                if (item.狀態 === "維修中" || item.狀態 === "損壞") statusClass = "bg-orange-50 text-orange-700 border border-orange-200 font-semibold";
+                if (item.狀態 === "報廢") statusClass = "bg-gray-200 text-gray-600 border border-gray-300 line-through";
+
                 let cateClass = "bg-gray-100 text-gray-600";
                 if (item.分類 === "工具") cateClass = "bg-blue-50 text-blue-700 border border-blue-200 font-medium";
                 if (item.分類 === "器材") cateClass = "bg-purple-50 text-purple-700 border border-purple-200 font-medium";
@@ -342,8 +334,11 @@
                 
                 let dateStr = "-";
                 if (item.異動時間) {
-                    const d = new Date(item.異動時間);
-                    dateStr = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                    dateStr = new Date(item.異動時間).toLocaleString('zh-TW', { 
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit',
+                        hour12: false 
+                    });
                 }
 
                 return `
