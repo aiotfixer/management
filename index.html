@@ -23,7 +23,7 @@
                 <div id="reader" class="w-full bg-gray-50 rounded-xl mb-4 border-2 border-dashed border-gray-200" style="min-height: 250px;"></div>
                 
                 <div class="flex gap-2">
-                    <input type="text" id="manualInput" placeholder="或手動輸入設備編號" class="flex-1 border p-2 rounded">
+                    <input type="text" id="manualInput" placeholder="手動輸入設備編號" class="flex-1 border p-2 rounded">
                     <button onclick="addDeviceFromInput()" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 active:scale-95 transition-transform font-medium">加入</button>
                 </div>
             </div>
@@ -40,8 +40,8 @@
                         <div>
                             <label class="block font-medium mb-1 text-gray-600">本次動作：</label>
                             <select id="actionType" class="w-full border p-2.5 rounded-lg bg-gray-50 font-medium text-gray-800">
-                                <option value="借出中" class="text-red-700">辦辦理借用 (一鍵多項)</option>
-                                <option value="可借用" class="text-green-700">辦理歸還 (一鍵多項)</option>
+                                <option value="借出中" class="text-red-700">辦理借用</option>
+                                <option value="可借用" class="text-green-700">辦理歸還</option>
                             </select>
                         </div>
                     </div>
@@ -56,7 +56,7 @@
                 </div>
 
                 <button onclick="submitBatch()" id="submitBtn" class="w-full bg-green-600 text-white py-3.5 rounded-lg font-bold mt-5 hover:bg-green-700 active:scale-[0.98] transition-all text-lg shadow-sm">
-                    確認送出 (處理多項設備)
+                    確認送出
                 </button>
             </div>
         </div>
