@@ -6,6 +6,21 @@
     <title>設備借還管理系統</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        /* 針對掃描區域的客製化樣式 */
+        #reader__scan_region video {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #ddd;
+        }
+        #reader__dashboard_section_csr button {
+            background-color: #4f46e5; /* Indigo */
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+    </style>
 </head>
 <body class="bg-gray-100 p-4 md:p-8">
 
@@ -15,64 +30,73 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-bold mb-4 text-indigo-600">Step 1：掃描或輸入設備</h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-indigo-600">Step 1：啟用並掃描設備</h2>
+                    <span id="cameraStatus" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-700">未偵測到相機</span>
+                </div>
                 
-                <div id="reader" class="w-full bg-black rounded mb-4 overflow-hidden" style="min-height: 250px;"></div>
+                <div id="reader" class="w-full bg-gray-50 rounded-xl mb-4 border-2 border-dashed border-gray-200" style="min-height: 250px;">
+                    </div>
                 
-                <div class="flex gap-2 mb-4">
+                <div class="flex gap-2">
                     <input type="text" id="manualInput" placeholder="或手動輸入設備編號" class="flex-1 border p-2 rounded">
-                    <button onclick="addDeviceFromInput()" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600">加入</button>
+                    <button onclick="addDeviceFromInput()" class="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 font-medium">加入</button>
                 </div>
             </div>
 
             <div class="bg-white p-6 rounded-lg shadow flex flex-col justify-between">
                 <div>
-                    <h2 class="text-xl font-bold mb-4 text-indigo-600">Step 2：確認待處理清單</h2>
+                    <h2 class="text-xl font-bold mb-4 text-indigo-600">Step 2：確認與批次借還</h2>
                     
-                    <div class="mb-4">
-                        <label class="block font-medium mb-1">人員姓名：</label>
-                        <input type="text" id="userName" placeholder="請輸入借還人姓名" class="w-full border p-2 rounded">
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label class="block font-medium mb-1">本次動作：</label>
-                        <select id="actionType" class="w-full border p-2 rounded">
-                            <option value="借出中">辦理借用 (狀態轉為借出中)</option>
-                            <option value="可借用">辦理歸還 (狀態轉為可借用)</option>
-                        </select>
+                    <div class="mb-4 space-y-3">
+                        <div>
+                            <label class="block font-medium mb-1 text-gray-600">操作人員姓名：</label>
+                            <input type="text" id="userName" placeholder="請輸入您的姓名" class="w-full border p-2.5 rounded-lg bg-gray-50">
+                        </div>
+                        <div>
+                            <label class="block font-medium mb-1 text-gray-600">本次動作：</label>
+                            <select id="actionType" class="w-full border p-2.5 rounded-lg bg-gray-50 font-medium text-gray-800">
+                                <option value="借出中" class="text-red-700">辦理借用 (一鍵多項)</option>
+                                <option value="可借用" class="text-green-700">辦理歸還 (一鍵多項)</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <h3 class="font-bold text-gray-700 mb-2">已選取設備：</h3>
-                    <ul id="cartList" class="divide-y divide-gray-200 border rounded max-h-40 overflow-y-auto p-2 bg-gray-50 text-sm">
-                        <li class="text-gray-500 py-1 text-center">尚未掃描任何設備</li>
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-bold text-gray-700">待處理清單：</h3>
+                        <button onclick="clearCart()" class="text-sm text-gray-500 hover:text-red-600">全部清除</button>
+                    </div>
+                    <ul id="cartList" class="divide-y divide-gray-200 border rounded-lg max-h-40 overflow-y-auto p-2 bg-gray-50 text-sm">
+                        <li class="text-gray-500 py-3 text-center">請啟用相機並掃描設備 QR Code</li>
                     </ul>
                 </div>
 
-                <button onclick="submitBatch()" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold mt-4 hover:bg-green-700">
-                    確認送出 (批次處理)
+                <button onclick="submitBatch()" id="submitBtn" class="w-full bg-green-600 text-white py-3.5 rounded-lg font-bold mt-5 hover:bg-green-700 text-lg shadow-sm">
+                    確認送出 (處理多項設備)
                 </button>
             </div>
         </div>
 
         <div class="bg-white p-6 rounded-lg shadow">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-gray-800">📊 設備即時狀態看板</h2>
+                <h2 class="text-xl font-bold text-gray-800">📊 設備即時狀態看板 (1秒同步)</h2>
                 <button onclick="fetchDashboard()" class="bg-gray-200 hover:bg-gray-300 px-4 py-1.5 rounded text-sm font-medium">🔄 重新整理</button>
             </div>
             
             <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+                <table class="w-full text-left border-collapse table-auto">
                     <thead>
                         <tr class="bg-gray-100 border-b">
-                            <th class="p-3">設備編號</th>
-                            <th class="p-3">設備名稱</th>
-                            <th class="p-3">目前狀態</th>
-                            <th class="p-3">異動時間</th>
-                            <th class="p-3">使用人員</th>
+                            <th class="p-4">設備編號</th>
+                            <th class="p-4">設備名稱</th>
+                            <th class="p-4">目前狀態</th>
+                            <th class="p-4">異動時間</th>
+                            <th class="p-4">使用人員</th>
                         </tr>
                     </thead>
                     <tbody id="dashboardBody" class="divide-y divide-gray-100 text-sm">
-                        </tbody>
+                        <tr><td colspan="5" class="text-center p-6 text-gray-400">載入中...</td></tr>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -82,25 +106,74 @@
         const GAS_URL = "https://script.google.com/macros/s/AKfycbwklW3tEbodtReTzsS4zxfgi8x7kBiDCK0cGlKaBxzUpYsG_veyqRw03Iemc4mxGDfXNg/exec"; 
         
         let selectedDevices = [];
+        let html5QrcodeScanner;
 
-        // 初始化 QR Code 掃描器
+        // --- 相機權限與掃描邏輯 ---
+
+        // 初始化掃描器並主動要求權限
+        function initializeCamera() {
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader", 
+                { 
+                    fps: 10,       // 幀率
+                    qrbox: 280,     // 掃描框大小
+                    aspectRatio: 1.0 // 強制正方形相機畫面
+                },
+                /* verbose= */ false
+            );
+
+            // 啟動掃描器，html5-qrcode 會自動觸發相機權限要求
+            html5QrcodeScanner.render(onScanSuccess, onScanError);
+            
+            // 更新狀態顯示 (假設權限已獲得，失敗會觸發 Error)
+            document.getElementById("cameraStatus").textContent = "相機已啟用";
+            document.getElementById("cameraStatus").classList.remove("bg-gray-200", "text-gray-700");
+            document.getElementById("cameraStatus").classList.add("bg-green-100", "text-green-800");
+        }
+
+        // 掃描成功回調
         function onScanSuccess(decodedText, decodedResult) {
-            // 掃描成功後，防抖/避免重複加入
+            // decodedText 為 QR Code 的內容 (即設備編號)
             if (!selectedDevices.includes(decodedText)) {
                 selectedDevices.push(decodedText);
                 updateCartUI();
-                // 播放簡短提示音或震動（選擇性）
+                // 手機震動提示 (如果支援)
                 if (navigator.vibrate) navigator.vibrate(100);
             }
         }
 
-        const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-        html5QrcodeScanner.render(onScanSuccess);
+        // 掃描失敗回調 (通常是沒掃到東西)
+        function onScanError(errorMessage) {
+            // 由於頻率很高，通常不在此彈出錯誤，只在控制台記錄
+            // 如果發生權限被拒絕，則會進入不同的邏輯
+        }
 
-        // 手動輸入加入清單
+        // 當網頁載入時，先顯示啟用按鈕，不直接要求權限以免嚇到使用者
+        window.onload = function() {
+            // 在 #reader 區域動態插入一個啟用按鈕
+            document.getElementById("reader").innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full p-6 text-center">
+                    <i class="fa-solid fa-camera text-4xl text-indigo-300 mb-3"></i>
+                    <p class="text-gray-600 mb-4">系統需要存取您的相機以掃描 QR Code</p>
+                    <button onclick="initializeCamera()" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-indigo-700">
+                        啟用相機並授權
+                    </button>
+                </div>
+            `;
+            // 加入 FontAwesome 圖示
+            const link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css";
+            document.head.appendChild(link);
+
+            fetchDashboard(); // 初始化看板
+        };
+
+        // --- 借還清單 (購物車) 邏輯 ---
+
         function addDeviceFromInput() {
             const input = document.getElementById("manualInput");
-            const value = input.value.trim();
+            const value = input.value.trim().toUpperCase();
             if (value && !selectedDevices.includes(value)) {
                 selectedDevices.push(value);
                 updateCartUI();
@@ -108,34 +181,48 @@
             }
         }
 
-        // 移除暫存清單中的設備
         function removeFormCart(index) {
             selectedDevices.splice(index, 1);
             updateCartUI();
         }
 
-        // 更新暫存清單 UI
+        function clearCart() {
+            selectedDevices = [];
+            updateCartUI();
+        }
+
         function updateCartUI() {
             const list = document.getElementById("cartList");
             if (selectedDevices.length === 0) {
-                list.innerHTML = `<li class="text-gray-500 py-1 text-center">尚未掃描任何設備</li>`;
+                list.innerHTML = `<li class="text-gray-500 py-3 text-center">請啟用相機並掃描設備 QR Code</li>`;
                 return;
             }
             list.innerHTML = selectedDevices.map((id, index) => `
-                <li class="flex justify-between items-center py-1.5">
-                    <span class="font-mono font-bold">${id}</span>
-                    <button onclick="removeFormCart(${index})" class="text-red-500 hover:text-red-700 text-xs">移除</button>
+                <li class="flex justify-between items-center py-2.5">
+                    <span class="font-mono font-bold text-gray-800 text-lg">${id}</span>
+                    <button onclick="removeFormCart(${index})" class="text-red-500 hover:text-red-700 text-sm">移除</button>
                 </li>
             `).join('');
         }
 
-        // 批次送出至 Google Sheets
+        // --- 資料同步至 Google Sheets ---
+
         function submitBatch() {
             const user = document.getElementById("userName").value.trim();
             const type = document.getElementById("actionType").value;
+            const btn = document.getElementById("submitBtn");
 
-            if (!user) return alert("請輸入人員姓名！");
-            if (selectedDevices.length === 0) return alert("待處理清單內沒有設備，請先掃描 QR Code！");
+            if (!user) return alert("請輸入操作人員姓名！");
+            if (selectedDevices.length === 0) return alert("待處理清單內沒有設備，請先掃描或手動輸入！");
+
+            if (!confirm(`確定要將以下 ${selectedDevices.length} 項設備狀態更改為「${type}」嗎？\n${selectedDevices.join(', ')}`)) {
+                return;
+            }
+
+            // 顯示載入狀態
+            btn.disabled = true;
+            btn.textContent = "處理中 (請勿關閉)...";
+            btn.classList.add("opacity-50", "cursor-not-allowed");
 
             const payload = {
                 action: "batchProcess",
@@ -143,9 +230,6 @@
                 type: type,
                 items: selectedDevices
             };
-
-            // 顯示載入狀態
-            alert("正在處理中，請稍候...");
 
             fetch(GAS_URL, {
                 method: "POST",
@@ -155,51 +239,55 @@
             .then(res => {
                 if (res.status === "success") {
                     alert(res.message);
-                    selectedDevices = []; // 清空購物車
-                    updateCartUI();
+                    clearCart();
                     document.getElementById("userName").value = "";
                     fetchDashboard(); // 重新整理即時看板
                 } else {
-                    alert("處理失敗，請重新嘗試。");
+                    alert("處理失敗：" + res.message);
                 }
+            })
+            .finally(() => {
+                // 恢復按鈕狀態
+                btn.disabled = false;
+                btn.textContent = "確認送出 (處理多項設備)";
+                btn.classList.remove("opacity-50", "cursor-not-allowed");
             });
         }
 
-        // 獲取並渲染即時狀態看板 (GET)
+        // 獲取即時狀態看板數據 (GET)
         function fetchDashboard() {
             const tbody = document.getElementById("dashboardBody");
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-400">載入中...</td></tr>`;
-
+            
             fetch(GAS_URL)
             .then(res => res.json())
             .then(data => {
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center p-6 text-gray-400">目前沒有設備資料。</td></tr>`;
+                    return;
+                }
                 tbody.innerHTML = data.map(item => {
                     const statusClass = item.狀態 === "可借用" 
                         ? "bg-green-100 text-green-800" 
                         : "bg-red-100 text-red-800";
                     
-                    // 格式化時間
-                    const dateStr = item.時間 ? new Date(item.時間).toLocaleString() : "-";
+                    const dateStr = item.時間 ? new Date(item.時間).toLocaleString('zh-TW', { hour12: false }) : "-";
 
                     return `
-                        <tr class="hover:bg-gray-50 border-b border-gray-100">
-                            <td class="p-3 font-mono font-bold text-gray-700">${item.設備編號}</td>
-                            <td class="p-3">${item.設備名稱}</td>
-                            <td class="p-3">
-                                <span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass}">
+                        <tr class="hover:bg-gray-50 border-b border-gray-100 transition-colors">
+                            <td class="p-4 font-mono font-bold text-gray-800">${item.設備編號}</td>
+                            <td class="p-4 text-gray-700">${item.設備名稱}</td>
+                            <td class="p-4">
+                                <span class="px-3 py-1.5 rounded-full text-xs font-bold ${statusClass}">
                                     ${item.狀態}
                                 </span>
                             </td>
-                            <td class="p-3 text-gray-500">${dateStr}</td>
-                            <td class="p-3 text-gray-600 font-medium">${item.人員 || "-"}</td>
+                            <td class="p-4 text-gray-500 font-mono text-xs">${dateStr}</td>
+                            <td class="p-4 text-gray-600 font-medium">${item.人員 || "-"}</td>
                         </tr>
                     `;
                 }).join('');
             });
         }
-
-        // 網頁開啟時自動載入看板資料
-        window.onload = fetchDashboard;
     </script>
 </body>
 </html>
